@@ -8,7 +8,7 @@ import { Vec3 } from 'vec3';
 
 // Create the MCP server
 const server = new McpServer({
-  name: 'minecraft-mcp',
+  name: 'minecraft-ai-mcp',
   version: '1.0.0',
 });
 

@@ -1,5 +1,10 @@
 # 🎮 Minecraft MCP Server
 
+[![npm version](https://img.shields.io/npm/v/minecraft-ai-mcp.svg)](https://www.npmjs.com/package/minecraft-ai-mcp)
+[![npm downloads](https://img.shields.io/npm/dm/minecraft-ai-mcp.svg)](https://www.npmjs.com/package/minecraft-ai-mcp)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Node.js Version](https://img.shields.io/node/v/minecraft-ai-mcp.svg)](https://nodejs.org)
+
 An MCP (Model Context Protocol) server that allows AI agents to play Minecraft! Built with [Mineflayer](https://github.com/PrismarineJS/mineflayer) and the official [MCP TypeScript SDK](https://github.com/modelcontextprotocol/typescript-sdk).
 
 ## 🚀 Features

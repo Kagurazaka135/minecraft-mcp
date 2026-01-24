@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "minecraft": {
+      "command": "node",
+      "args": ["/path/to/minecraft-mcp/build/index.js"]
+    }
+  }
+}

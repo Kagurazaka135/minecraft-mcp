@@ -54,9 +54,26 @@ An MCP (Model Context Protocol) server that allows AI agents to play Minecraft! 
 
 ## 📦 Installation
 
+### Quick Start (Recommended)
+
+Run directly with npx - no installation required:
+
 ```bash
-# Clone or download the project
-git clone https://github.com/yourusername/minecraft-mcp.git
+npx -y minecraft-ai-mcp
+```
+
+### Global Installation
+
+```bash
+npm install -g minecraft-ai-mcp
+minecraft-ai-mcp
+```
+
+### From Source
+
+```bash
+# Clone the repository
+git clone https://github.com/harjjotsinghh/minecraft-mcp.git
 cd minecraft-mcp
 
 # Install dependencies
@@ -64,6 +81,9 @@ npm install
 
 # Build the project
 npm run build
+
+# Run the server
+npm start
 ```
 
 ## 🔧 Configuration
@@ -72,32 +92,44 @@ npm run build
 
 Add to your Claude Desktop config file:
 
-**macOS**: `~/Library/Application Support/Claude/claude_desktop_config.json`
+**macOS**: `~/Library/Application Support/Claude/claude_desktop_config.json`  
 **Windows**: `%APPDATA%\Claude\claude_desktop_config.json`
 
 ```json
 {
   "mcpServers": {
     "minecraft": {
-      "command": "node",
-      "args": ["/path/to/minecraft-mcp/build/index.js"]
+      "command": "npx",
+      "args": ["-y", "minecraft-ai-mcp"]
     }
   }
 }
 ```
 
-### Cursor/VS Code Configuration
+### Cursor Configuration
 
-Add to your MCP settings:
+Add to your `.cursor/mcp.json` file:
 
 ```json
 {
-  "mcp": {
-    "servers": {
-      "minecraft": {
-        "command": "node",
-        "args": ["/path/to/minecraft-mcp/build/index.js"]
-      }
+  "mcpServers": {
+    "minecraft": {
+      "command": "npx",
+      "args": ["-y", "minecraft-ai-mcp"]
+    }
+  }
+}
+```
+
+### Alternative: Using Global Installation
+
+If you installed globally, you can use the command directly:
+
+```json
+{
+  "mcpServers": {
+    "minecraft": {
+      "command": "minecraft-ai-mcp"
     }
   }
 }

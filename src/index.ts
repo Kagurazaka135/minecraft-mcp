@@ -6,6 +6,9 @@ import { z } from 'zod';
 import { botManager, goals } from './utils/bot-manager.js';
 import { Vec3 } from 'vec3';
 
+import { createRequire } from 'module';
+const require = createRequire(import.meta.url);
+
 // Create the MCP server
 const server = new McpServer({
   name: 'minecraft-ai-mcp',
@@ -440,18 +443,18 @@ server.tool(
       return { content: [{ type: 'text', text: `Unknown item: ${itemName}` }], isError: true };
     }
 
-    const recipes = bot.recipesFor(item.id, null, 1, null);
+    // Find a nearby crafting table first — table-requiring recipes (tools) need it passed to recipesFor
+    const craftingTable = bot.findBlock({
+      matching: mcData.blocksByName.crafting_table?.id,
+      maxDistance: 4,
+    });
+
+    const recipes = bot.recipesFor(item.id, null, 1, craftingTable);
     if (recipes.length === 0) {
       return { content: [{ type: 'text', text: `No recipe found for ${itemName}` }], isError: true };
     }
 
     try {
-      // Find crafting table nearby or craft without one
-      const craftingTable = bot.findBlock({
-        matching: mcData.blocksByName.crafting_table?.id,
-        maxDistance: 4,
-      });
-
       await bot.craft(recipes[0], count, craftingTable || undefined);
       return { content: [{ type: 'text', text: `Successfully crafted ${count} ${itemName}` }] };
     } catch (error) {
@@ -479,7 +482,11 @@ server.tool(
       return { content: [{ type: 'text', text: `Unknown item: ${itemName}` }], isError: true };
     }
 
-    const recipes = bot.recipesFor(item.id, null, 1, null);
+    const craftingTable = bot.findBlock({
+      matching: mcData.blocksByName.crafting_table?.id,
+      maxDistance: 4,
+    });
+    const recipes = bot.recipesFor(item.id, null, 1, craftingTable);
     if (recipes.length === 0) {
       return { content: [{ type: 'text', text: `No recipes found for ${itemName}` }] };
     }
@@ -491,6 +498,109 @@ server.tool(
     }));
 
     return { content: [{ type: 'text', text: JSON.stringify(recipeInfo, null, 2) }] };
+  }
+);
+
+// ============================================================================
+// SMELTING TOOLS
+// ============================================================================
+
+server.tool(
+  'smelt',
+  'Smelt an input item in a nearby furnace. Places a furnace from inventory if needed. Waits for completion and takes the output.',
+  {
+    inputName: z.string().describe('Item to smelt, e.g. "raw_iron", "raw_gold", "sand"'),
+    fuelName: z.string().default('coal').describe('Fuel item, e.g. "coal", "oak_planks", "charcoal"'),
+    count: z.number().default(1).describe('How many to smelt'),
+  },
+  async ({ inputName, fuelName, count }) => {
+    const bot = botManager.getBot();
+    if (!bot) {
+      return { content: [{ type: 'text', text: 'Bot is not connected.' }], isError: true };
+    }
+
+    const mcData = require('minecraft-data')(bot.version);
+    const myItems = () => bot.inventory.items();
+
+    // Ensure a furnace is in the world (place one from inventory if needed)
+    let furnaceBlock = bot.findBlock({
+      matching: mcData.blocksByName.furnace?.id,
+      maxDistance: 5,
+    });
+    if (!furnaceBlock) {
+      const f = myItems().find(i => i.name === 'furnace');
+      if (!f) {
+        return { content: [{ type: 'text', text: 'No furnace in inventory and none nearby.' }], isError: true };
+      }
+      const base = bot.entity.position.floored();
+      let placed = false;
+      for (const [dx, dy, dz] of [[1, 0, 0], [-1, 0, 0], [0, 0, 1], [0, 0, -1], [1, 0, 1], [-1, 0, -1], [1, 0, -1], [-1, 0, 1]]) {
+        const ref = new Vec3(base.x + dx, base.y + dy - 1, base.z + dz);
+        const destB = bot.blockAt(new Vec3(base.x + dx, base.y + dy, base.z + dz));
+        const refB = bot.blockAt(ref);
+        if (refB && refB.name !== 'air' && destB && destB.name === 'air') {
+          try {
+            await bot.equip(f, 'hand');
+            await bot.placeBlock(refB, new Vec3(0, 1, 0));
+            placed = true;
+          } catch (e) { /* try next spot */ }
+          break;
+        }
+      }
+      if (!placed) {
+        return { content: [{ type: 'text', text: 'Could not place the furnace.' }], isError: true };
+      }
+      furnaceBlock = bot.findBlock({ matching: mcData.blocksByName.furnace?.id, maxDistance: 5 });
+      if (!furnaceBlock) {
+        return { content: [{ type: 'text', text: 'Furnace placed but not found.' }], isError: true };
+      }
+    }
+
+    const input = myItems().find(i => i.name === inputName) || myItems().find(i => i.name.includes(inputName));
+    if (!input) {
+      return { content: [{ type: 'text', text: `No ${inputName} in inventory.` }], isError: true };
+    }
+    const fuel = myItems().find(i => i.name === fuelName) || myItems().find(i => i.name.includes(fuelName));
+    if (!fuel) {
+      return { content: [{ type: 'text', text: `No fuel (${fuelName}) in inventory.` }], isError: true };
+    }
+
+    const toSmelt = Math.min(count, input.count);
+    let furnace;
+    try {
+      furnace = await bot.openFurnace(furnaceBlock);
+      // Standard furnace slot layout: 0 = input, 1 = fuel, 2 = output
+      await furnace.putInput(input.type, null, toSmelt);
+      await furnace.putFuel(fuel.type, null, 1);
+    } catch (e) {
+      return { content: [{ type: 'text', text: `Furnace error: ${e}` }], isError: true };
+    }
+
+    // Wait until the output slot matches the requested count (or timeout)
+    const deadline = Date.now() + Math.max(20000, toSmelt * 12000);
+    while (Date.now() < deadline) {
+      if (furnace.outputItem() && furnace.outputItem().count >= toSmelt) break;
+      await new Promise(r => setTimeout(r, 500));
+    }
+
+    let taken = 0;
+    let outName = 'output';
+    try {
+      const out = furnace.outputItem();
+      if (out) {
+        outName = (mcData.items[out.type] && mcData.items[out.type].name) || 'output';
+        await furnace.takeOutput();
+        taken = out.count;
+      }
+      const leftover = furnace.inputItem();
+      if (leftover) await furnace.takeInput();
+    } catch (e) { /* ignore */ }
+    try { furnace.close(); } catch (e) { /* ignore */ }
+
+    if (taken === 0) {
+      return { content: [{ type: 'text', text: `Smelting produced nothing (check input/fuel).` }], isError: true };
+    }
+    return { content: [{ type: 'text', text: `Smelted ${taken} ${inputName} -> ${outName}` }] };
   }
 );
 

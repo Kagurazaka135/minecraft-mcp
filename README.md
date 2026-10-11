@@ -7,6 +7,8 @@
 
 An MCP (Model Context Protocol) server that allows AI agents to play Minecraft! Built with [Mineflayer](https://github.com/PrismarineJS/mineflayer) and the official [MCP TypeScript SDK](https://github.com/modelcontextprotocol/typescript-sdk).
 
+> **This is a maintained fork** of [harjjotsinghh/minecraft-mcp](https://github.com/harjjotsinghh/minecraft-mcp) with bug fixes for modern Minecraft. Fixes are listed in [Fixes in this fork](#-fixes-in-this-fork).
+
 ## 🚀 Features
 
 ### Connection Management
@@ -52,6 +54,17 @@ An MCP (Model Context Protocol) server that allows AI agents to play Minecraft! 
 - **Sleep**: Find and sleep in nearby beds
 - **Get status**: Full status report (health, hunger, position, etc.)
 
+## 🔧 Fixes in this fork
+
+Derived from [harjjotsinghh/minecraft-mcp](https://github.com/harjjotsinghh/minecraft-mcp) (MIT). These fixes let the server actually run against modern Minecraft — tested end-to-end on **Java Edition 1.21.6**:
+
+| Fix | Symptom before | What changed |
+|-----|----------------|--------------|
+| **`createRequire` shim** | Server crashed the moment the bot spawned (`require is not defined in ES module scope`) | Added a `createRequire` shim in `src/index.ts` and `src/utils/bot-manager.ts` |
+| **mineflayer upgrade** | `place_block` timed out and no block ever appeared | Bumped `mineflayer` `4.33.0` → `4.39.0` (old build mishandled the 1.21 placement packet) |
+| **Crafting needs a table** | `craft_item` / `get_recipes` returned "No recipe found" for every tool | Locate a nearby crafting table and pass it to `recipesFor` before querying |
+| **New `smelt` tool** | No way to smelt iron/gold/food at all | Added a `smelt` tool: places a furnace if needed, adds fuel + input, waits, and takes the output |
+
 ## 📦 Installation
 
 ### Quick Start (Recommended)
@@ -73,7 +86,7 @@ minecraft-ai-mcp
 
 ```bash
 # Clone the repository
-git clone https://github.com/harjjotsinghh/minecraft-mcp.git
+git clone https://github.com/Kagurazaka135/minecraft-mcp.git
 cd minecraft-mcp
 
 # Install dependencies
@@ -156,6 +169,7 @@ If you installed globally, you can use the command directly:
 | `drop_item` | Drop items |
 | `craft_item` | Craft an item |
 | `get_recipes` | Get crafting recipes |
+| `smelt` | Smelt an item in a nearby furnace (places one from inventory if needed) |
 | `attack_entity` | Attack an entity |
 | `stop_attack` | Stop attacking |
 | `get_nearby_entities` | List nearby entities |
@@ -246,3 +260,5 @@ MIT License - feel free to use this in your own projects!
 - [PrismarineJS](https://github.com/PrismarineJS) - For all the Minecraft tooling
 - [Anthropic](https://github.com/anthropics) - For the MCP specification
 - Built with ❤️ by [Harjot Singh Rana](https://harjotrana.com) for the AI gaming revolution
+
+**Fork maintainer:** [Kagurazaka135](https://github.com/Kagurazaka135). The 1.21.6 fixes above were made with [Claude Code](https://claude.com/claude-code).

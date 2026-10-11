@@ -7,6 +7,9 @@ const { plugin: collectBlock } = collectBlockPkg;
 import * as autoEatPkg from 'mineflayer-auto-eat';
 const autoEat = autoEatPkg.loader;
 
+import { createRequire } from 'module';
+const require = createRequire(import.meta.url);
+
 export interface BotConfig {
   host: string;
   port: number;
